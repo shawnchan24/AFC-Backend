@@ -2,7 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const nodemailer = require("nodemailer");
-require("dotenv").config();
+require("dotenv").config(); // Load environment variables
 
 const User = require("./models/User");
 
@@ -21,9 +21,15 @@ app.use(express.json());
 
 // Connect to MongoDB
 mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((error) => console.error("MongoDB connection error:", error));
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("Connected to MongoDB Atlas"))
+  .catch((error) => {
+    console.error("MongoDB connection error:", error.message);
+    process.exit(1); // Exit the application if the connection fails
+  });
 
 // Nodemailer setup
 const transporter = nodemailer.createTransport({
@@ -55,7 +61,7 @@ app.post("/register", async (req, res) => {
 
     res.status(201).json({ message: "Registration successful. Pending admin approval." });
   } catch (error) {
-    console.error("Error registering user:", error);
+    console.error("Error registering user:", error.message);
     res.status(500).json({ message: "Error registering user." });
   }
 });
@@ -80,7 +86,7 @@ app.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid PIN." });
     }
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("Login error:", error.message);
     res.status(500).json({ message: "Login failed." });
   }
 });
@@ -91,7 +97,7 @@ app.get("/api/admin/pending-users", async (req, res) => {
     const users = await User.find({ approved: false });
     res.status(200).json(users);
   } catch (error) {
-    console.error("Error fetching pending users:", error);
+    console.error("Error fetching pending users:", error.message);
     res.status(500).json({ message: "Failed to fetch pending users." });
   }
 });
@@ -111,7 +117,7 @@ app.post("/api/admin/approve-user/:id", async (req, res) => {
 
     res.status(200).json({ message: "User approved successfully." });
   } catch (error) {
-    console.error("Error approving user:", error);
+    console.error("Error approving user:", error.message);
     res.status(500).json({ message: "Failed to approve user." });
   }
 });
@@ -131,7 +137,7 @@ app.post("/api/admin/reject-user/:id", async (req, res) => {
 
     res.status(200).json({ message: "User rejected successfully." });
   } catch (error) {
-    console.error("Error rejecting user:", error);
+    console.error("Error rejecting user:", error.message);
     res.status(500).json({ message: "Failed to reject user." });
   }
 });

@@ -8,8 +8,15 @@ const User = require("./models/User");
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Middleware: Configure CORS
+app.use(
+  cors({
+    origin: "https://theafc.life", // Allow requests from your frontend
+    methods: ["GET", "POST", "PUT", "DELETE"], // Allowed HTTP methods
+    credentials: true, // Allow credentials (cookies, headers)
+  })
+);
+
 app.use(express.json());
 
 // Connect to MongoDB

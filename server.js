@@ -5,6 +5,7 @@ const nodemailer = require("nodemailer");
 require("dotenv").config(); // Load environment variables
 
 const User = require("./models/User");
+const Event = require("./models/Event"); // Import Event model
 
 const app = express();
 
@@ -40,6 +41,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Routes
 // User registration
 app.post("/register", async (req, res) => {
   const { email } = req.body;
@@ -139,6 +141,17 @@ app.post("/api/admin/reject-user/:id", async (req, res) => {
   } catch (error) {
     console.error("Error rejecting user:", error.message);
     res.status(500).json({ message: "Failed to reject user." });
+  }
+});
+
+// Events routes for past events
+app.get("/api/events", async (req, res) => {
+  try {
+    const events = await Event.find(); // Fetch all events
+    res.status(200).json(events);
+  } catch (error) {
+    console.error("Error fetching events:", error.message);
+    res.status(500).json({ message: "Failed to fetch events." });
   }
 });
 

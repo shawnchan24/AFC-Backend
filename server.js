@@ -42,6 +42,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Routes
+
 // User registration
 app.post("/register", async (req, res) => {
   const { email } = req.body;
@@ -107,7 +108,12 @@ app.get("/api/admin/pending-users", async (req, res) => {
 app.post("/api/admin/approve-user/:id", async (req, res) => {
   try {
     const userId = req.params.id;
-    const user = await User.findByIdAndUpdate(userId, { approved: true, pin: "1153" });
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid User ID." });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, { approved: true, pin: "1153" }, { new: true });
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     // Notify user
     await transporter.sendMail({
@@ -127,7 +133,12 @@ app.post("/api/admin/approve-user/:id", async (req, res) => {
 app.post("/api/admin/reject-user/:id", async (req, res) => {
   try {
     const userId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid User ID." });
+    }
+
     const user = await User.findByIdAndDelete(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     // Notify user
     await transporter.sendMail({

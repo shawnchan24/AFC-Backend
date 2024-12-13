@@ -43,11 +43,15 @@ const transporter = nodemailer.createTransport({
 
 // Routes
 
-// User registration
+// User Registration
 app.post("/register", async (req, res) => {
   const { email } = req.body;
 
   try {
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: "User already exists." });
 
@@ -73,11 +77,15 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { email, pin } = req.body;
 
-  if (email === process.env.ADMIN_EMAIL && pin === "1532") {
-    return res.status(200).json({ isAdmin: true });
+  if (!email || !pin) {
+    return res.status(400).json({ message: "Email and PIN are required." });
   }
 
   try {
+    if (email === process.env.ADMIN_EMAIL && pin === "1532") {
+      return res.status(200).json({ isAdmin: true });
+    }
+
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found." });
 
@@ -94,7 +102,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Admin routes for managing users
+// Admin Routes
 app.get("/api/admin/pending-users", async (req, res) => {
   try {
     const users = await User.find({ approved: false });
@@ -108,6 +116,7 @@ app.get("/api/admin/pending-users", async (req, res) => {
 app.post("/api/admin/approve-user/:id", async (req, res) => {
   try {
     const userId = req.params.id;
+
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "Invalid User ID." });
     }
@@ -115,7 +124,6 @@ app.post("/api/admin/approve-user/:id", async (req, res) => {
     const user = await User.findByIdAndUpdate(userId, { approved: true, pin: "1153" }, { new: true });
     if (!user) return res.status(404).json({ message: "User not found." });
 
-    // Notify user
     await transporter.sendMail({
       from: process.env.EMAIL,
       to: user.email,
@@ -133,6 +141,7 @@ app.post("/api/admin/approve-user/:id", async (req, res) => {
 app.post("/api/admin/reject-user/:id", async (req, res) => {
   try {
     const userId = req.params.id;
+
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "Invalid User ID." });
     }
@@ -140,7 +149,6 @@ app.post("/api/admin/reject-user/:id", async (req, res) => {
     const user = await User.findByIdAndDelete(userId);
     if (!user) return res.status(404).json({ message: "User not found." });
 
-    // Notify user
     await transporter.sendMail({
       from: process.env.EMAIL,
       to: user.email,
@@ -155,10 +163,10 @@ app.post("/api/admin/reject-user/:id", async (req, res) => {
   }
 });
 
-// Events routes for past events
+// Events Routes
 app.get("/api/events", async (req, res) => {
   try {
-    const events = await Event.find(); // Fetch all events
+    const events = await Event.find();
     res.status(200).json(events);
   } catch (error) {
     console.error("Error fetching events:", error.message);

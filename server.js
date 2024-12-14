@@ -47,8 +47,6 @@ const transporter = nodemailer.createTransport({
 // Multer setup for file uploads
 const upload = multer({ dest: "uploads/" });
 
-// Routes
-
 // Admin User Login Information (unchanged)
 const ADMIN_EMAIL = "shawnchan24@gmail.com";
 const ADMIN_PIN = "1532";
@@ -77,7 +75,7 @@ app.get("/api/admin/user-stats", async (req, res) => {
   }
 });
 
-// Mark user as online (call this when a user logs in)
+// Mark user as online (called when a user logs in)
 app.post("/api/users/online/:id", async (req, res) => {
   try {
     const userId = req.params.id;
@@ -96,7 +94,7 @@ app.post("/api/users/online/:id", async (req, res) => {
   }
 });
 
-// Mark user as offline (call this when a user logs out)
+// Mark user as offline (called when a user logs out)
 app.post("/api/users/offline/:id", async (req, res) => {
   try {
     const userId = req.params.id;
@@ -140,6 +138,17 @@ app.get("/api/gallery", async (req, res) => {
   } catch (error) {
     console.error("Error fetching gallery items:", error.message);
     res.status(500).json({ message: "Failed to fetch gallery items." });
+  }
+});
+
+// Get pending photos for admin review
+app.get("/api/gallery/pending", async (req, res) => {
+  try {
+    const photos = await Photo.find({ approved: false });
+    res.json(photos);
+  } catch (error) {
+    console.error("Error fetching pending photos:", error.message);
+    res.status(500).json({ message: "Failed to fetch pending photos." });
   }
 });
 

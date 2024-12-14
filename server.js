@@ -129,93 +129,103 @@ app.get("/test-email", async (req, res) => {
   }
 });
 
-// Gallery Routes
-// Get approved photos
-app.get("/api/gallery", async (req, res) => {
-  try {
-    const photos = await Photo.find({ approved: true });
-    res.json(photos);
-  } catch (error) {
-    console.error("Error fetching gallery items:", error.message);
-    res.status(500).json({ message: "Failed to fetch gallery items." });
-  }
-});
+// User Registration
+app.post("/register", async (req, res) => {
+  const { email } = req.body;
 
-// Get pending photos for admin review
-app.get("/api/gallery/pending", async (req, res) => {
   try {
-    const photos = await Photo.find({ approved: false });
-    res.json(photos);
-  } catch (error) {
-    console.error("Error fetching pending photos:", error.message);
-    res.status(500).json({ message: "Failed to fetch pending photos." });
-  }
-});
-
-// Upload photo (pending admin approval)
-app.post("/api/gallery", upload.single("photo"), async (req, res) => {
-  try {
-    const { caption } = req.body;
-
-    if (!caption || !req.file) {
-      return res.status(400).json({ message: "Photo and caption are required." });
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
     }
 
-    const photo = new Photo({
-      url: `/uploads/${req.file.filename}`,
-      caption,
-      approved: false,
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists." });
+    }
+
+    const newUser = new User({
+      email,
+      approved: false, // Not approved initially
+      pin: null, // PIN will be set upon admin approval
     });
 
-    await photo.save();
+    await newUser.save();
 
-    res.status(201).json({ message: "Photo uploaded successfully. Pending admin approval." });
+    // Notify admin of the new registration
+    await transporter.sendMail({
+      from: "shawnchan24@gmail.com",
+      to: ADMIN_EMAIL,
+      subject: "New User Registration",
+      text: `A new user has registered: ${email}`,
+    });
+
+    res.status(201).json({ message: "Registration successful. Pending admin approval." });
   } catch (error) {
-    console.error("Error uploading photo:", error.message);
-    res.status(500).json({ message: "Failed to upload photo." });
+    console.error("Error during registration:", error.message);
+    res.status(500).json({ message: "Failed to register user." });
   }
 });
 
-// Admin: Approve photo
-app.post("/api/admin/approve-photo/:id", async (req, res) => {
-  try {
-    const photoId = req.params.id;
+// Approve User and Assign PIN
+app.post("/api/admin/approve-user/:id", async (req, res) => {
+  const userId = req.params.id;
 
-    if (!mongoose.Types.ObjectId.isValid(photoId)) {
-      return res.status(400).json({ message: "Invalid photo ID." });
+  try {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid User ID." });
     }
 
-    const photo = await Photo.findByIdAndUpdate(photoId, { approved: true }, { new: true });
-    if (!photo) return res.status(404).json({ message: "Photo not found." });
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { approved: true, pin: "1153" }, // Set default PIN upon approval
+      { new: true }
+    );
 
-    res.status(200).json({ message: "Photo approved successfully." });
-  } catch (error) {
-    console.error("Error approving photo:", error.message);
-    res.status(500).json({ message: "Failed to approve photo." });
-  }
-});
-
-// Admin: Reject photo
-app.delete("/api/admin/reject-photo/:id", async (req, res) => {
-  try {
-    const photoId = req.params.id;
-
-    if (!mongoose.Types.ObjectId.isValid(photoId)) {
-      return res.status(400).json({ message: "Invalid photo ID." });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
     }
 
-    const photo = await Photo.findByIdAndDelete(photoId);
-    if (!photo) return res.status(404).json({ message: "Photo not found." });
+    await transporter.sendMail({
+      from: "shawnchan24@gmail.com",
+      to: user.email,
+      subject: "Account Approved",
+      text: `Your account has been approved. You can now log in with your email and the default PIN: 1153`,
+    });
 
-    res.status(200).json({ message: "Photo rejected successfully." });
+    res.status(200).json({ message: "User approved successfully." });
   } catch (error) {
-    console.error("Error rejecting photo:", error.message);
-    res.status(500).json({ message: "Failed to reject photo." });
+    console.error("Error approving user:", error.message);
+    res.status(500).json({ message: "Failed to approve user." });
   }
 });
 
-// Other existing routes remain unchanged...
+// User Login
+app.post("/login", async (req, res) => {
+  const { email, pin } = req.body;
 
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "Invalid email or PIN." });
+    }
+
+    if (!user.approved) {
+      return res.status(403).json({ message: "Your account is pending admin approval." });
+    }
+
+    if (user.pin === pin) {
+      res.status(200).json({ message: "Login successful." });
+    } else {
+      res.status(400).json({ message: "Invalid email or PIN." });
+    }
+  } catch (error) {
+    console.error("Error during login:", error.message);
+    res.status(500).json({ message: "Failed to log in." });
+  }
+});
+
+// Gallery Routes remain unchanged...
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

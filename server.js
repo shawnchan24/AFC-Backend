@@ -43,6 +43,22 @@ const transporter = nodemailer.createTransport({
 
 // Routes
 
+// Test Email Endpoint
+app.get("/test-email", async (req, res) => {
+  try {
+    await transporter.sendMail({
+      from: "shawnchan24@gmail.com",
+      to: "daniel.j.turner32@gmail.com ", // Replace with the test email address
+      subject: "Test Email",
+      text: "This is a test email from Nodemailer.",
+    });
+    res.status(200).send("Email sent successfully");
+  } catch (error) {
+    console.error("Nodemailer test error:", error);
+    res.status(500).send("Failed to send email");
+  }
+});
+
 // User Registration
 app.post("/register", async (req, res) => {
   const { email } = req.body;
@@ -66,21 +82,6 @@ app.post("/register", async (req, res) => {
       text: `A new user has registered: ${email}`,
     });
 
-    app.get("/test-email", async (req, res) => {
-      try {
-        await transporter.sendMail({
-          from: "shawnchan24@gmail.com",
-          to: "daniel.j.turner32@gmail.com ", // Replace this with your test email address
-          subject: "Test Email",
-          text: "This is a test email from Nodemailer.",
-        });
-        res.status(200).send("Email sent successfully");
-      } catch (error) {
-        console.error("Nodemailer test error:", error);
-        res.status(500).send("Failed to send email");
-      }
-    });
-    
     res.status(201).json({ message: "Registration successful. Pending admin approval." });
   } catch (error) {
     console.error("Error registering user:", error.message);

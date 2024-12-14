@@ -39,7 +39,7 @@ mongoose
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
-    user: "shawnchan24@gmail.com", // Gmail address
+    user: "shawnchan24@gmail.com", // Admin Gmail address
     pass: "lyox qtci bbga mgym", // App-specific password
   },
 });
@@ -48,6 +48,21 @@ const transporter = nodemailer.createTransport({
 const upload = multer({ dest: "uploads/" });
 
 // Routes
+
+// Admin User Login Information (unchanged)
+const ADMIN_EMAIL = "shawnchan24@gmail.com";
+const ADMIN_PIN = "1532";
+
+// Admin Login Validation Route (unchanged functionality)
+app.post("/api/admin/login", (req, res) => {
+  const { email, pin } = req.body;
+
+  if (email === ADMIN_EMAIL && pin === ADMIN_PIN) {
+    res.status(200).json({ isAdmin: true, message: "Welcome, Admin!" });
+  } else {
+    res.status(401).json({ message: "Invalid admin credentials." });
+  }
+});
 
 // Fetch total users and online users count
 app.get("/api/admin/user-stats", async (req, res) => {

@@ -36,8 +36,8 @@ mongoose
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   auth: {
-    user: process.env.EMAIL,
-    pass: process.env.EMAIL_PASSWORD,
+    user: "shawnchan24@gmail.com", // Gmail address
+    pass: "lyox qtci bbga mgym", // App-specific password
   },
 });
 
@@ -60,12 +60,27 @@ app.post("/register", async (req, res) => {
 
     // Notify admin
     await transporter.sendMail({
-      from: process.env.EMAIL,
+      from: "shawnchan24@gmail.com",
       to: process.env.ADMIN_EMAIL,
       subject: "New User Registration",
       text: `A new user has registered: ${email}`,
     });
 
+    app.get("/test-email", async (req, res) => {
+      try {
+        await transporter.sendMail({
+          from: "shawnchan24@gmail.com",
+          to: "daniel.j.turner32@gmail.com ", // Replace this with your test email address
+          subject: "Test Email",
+          text: "This is a test email from Nodemailer.",
+        });
+        res.status(200).send("Email sent successfully");
+      } catch (error) {
+        console.error("Nodemailer test error:", error);
+        res.status(500).send("Failed to send email");
+      }
+    });
+    
     res.status(201).json({ message: "Registration successful. Pending admin approval." });
   } catch (error) {
     console.error("Error registering user:", error.message);
@@ -125,7 +140,7 @@ app.post("/api/admin/approve-user/:id", async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found." });
 
     await transporter.sendMail({
-      from: process.env.EMAIL,
+      from: "shawnchan24@gmail.com",
       to: user.email,
       subject: "Account Approved",
       text: "Your account has been approved. You can now log in with your email and PIN: 1153",
@@ -150,7 +165,7 @@ app.post("/api/admin/reject-user/:id", async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found." });
 
     await transporter.sendMail({
-      from: process.env.EMAIL,
+      from: "shawnchan24@gmail.com",
       to: user.email,
       subject: "Account Rejected",
       text: "Your account has been rejected. Please contact support for more information.",

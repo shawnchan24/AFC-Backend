@@ -51,14 +51,29 @@ const upload = multer({ dest: "uploads/" });
 const ADMIN_EMAIL = "shawnchan24@gmail.com";
 const ADMIN_PIN = "1532";
 
-// Admin Login Validation Route
-app.post("/api/admin/login", (req, res) => {
+// Login Route for Admin and Regular Users
+app.post("/login", async (req, res) => {
   const { email, pin } = req.body;
 
-  if (email === ADMIN_EMAIL && pin === ADMIN_PIN) {
-    res.status(200).json({ isAdmin: true, message: "Welcome, Admin!" });
-  } else {
-    res.status(401).json({ message: "Invalid admin credentials." });
+  try {
+    if (email === ADMIN_EMAIL && pin === ADMIN_PIN) {
+      return res.status(200).json({ isAdmin: true, message: "Welcome, Admin!" });
+    }
+
+    const user = await User.findOne({ email, pin });
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or PIN." });
+    }
+
+    if (!user.approved) {
+      return res.status(403).json({ message: "Your account is not yet approved." });
+    }
+
+    res.status(200).json({ isAdmin: false, message: "Login successful!" });
+  } catch (error) {
+    console.error("Error logging in:", error.message);
+    res.status(500).json({ message: "Failed to log in due to a server issue." });
   }
 });
 

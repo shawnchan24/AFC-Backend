@@ -70,7 +70,7 @@ app.post("/login", async (req, res) => {
       return res.status(403).json({ message: "Your account is not yet approved." });
     }
 
-    res.status(200).json({ isAdmin: false, message: "Login successful!" });
+    res.status(200).json({ isAdmin: false, approved: user.approved, message: "Login successful!" });
   } catch (error) {
     console.error("Error logging in:", error.message);
     res.status(500).json({ message: "Failed to log in due to a server issue." });
@@ -87,6 +87,17 @@ app.get("/api/admin/user-stats", async (req, res) => {
   } catch (error) {
     console.error("Error fetching user stats:", error.message);
     res.status(500).json({ message: "Failed to fetch user stats." });
+  }
+});
+
+// Pending Users Route
+app.get("/api/admin/pending-users", async (req, res) => {
+  try {
+    const pendingUsers = await User.find({ approved: false });
+    res.status(200).json(pendingUsers);
+  } catch (error) {
+    console.error("Error fetching pending users:", error.message);
+    res.status(500).json({ message: "Failed to fetch pending users." });
   }
 });
 

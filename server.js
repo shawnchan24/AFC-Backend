@@ -62,91 +62,61 @@ app.post("/api/admin/login", (req, res) => {
   }
 });
 
-// User Registration Endpoint
-app.post("/register", async (req, res) => {
+// Fetch total users and online users count
+app.get("/api/admin/user-stats", async (req, res) => {
   try {
-    const { email } = req.body;
+    const totalUsers = await User.countDocuments(); // Total number of users
+    const onlineUsers = await User.countDocuments({ online: true }); // Users with "online: true"
 
-    if (!email) {
-      return res.status(400).json({ message: "Email is required." });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists." });
-    }
-
-    const user = new User({
-      email,
-      approved: false,
-      pin: 1153, // Default PIN
-    });
-
-    await user.save();
-    res.status(201).json({
-      message: "Registration successful. Pending admin approval.",
-    });
+    res.status(200).json({ totalUsers, onlineUsers });
   } catch (error) {
-    console.error("Error during registration:", error.message);
+    console.error("Error fetching user stats:", error.message);
+    res.status(500).json({ message: "Failed to fetch user stats." });
+  }
+});
+
+// Registration Route
+app.post("/register", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required." });
+  }
+
+  const newUser = new User({
+    email,
+    pin: "1153", // Assign default PIN
+    approved: false,
+    online: false,
+  });
+
+  try {
+    await newUser.save();
+    res.status(201).json({ message: "Registration successful. Pending admin approval." });
+  } catch (error) {
+    console.error("Error registering user:", error.message);
     res.status(500).json({ message: "Failed to register user." });
   }
 });
 
-// User Login Endpoint
-app.post("/login", async (req, res) => {
-  try {
-    const { email, pin } = req.body;
-
-    if (!email || !pin) {
-      return res
-        .status(400)
-        .json({ message: "Both email and PIN are required." });
-    }
-
-    const user = await User.findOne({ email, pin });
-    if (!user) {
-      return res.status(401).json({ message: "Invalid email or PIN." });
-    }
-
-    if (!user.approved) {
-      return res.status(403).json({
-        message: "Your account is pending approval. Please wait for admin approval.",
-      });
-    }
-
-    res.status(200).json({
-      message: "Login successful.",
-      user: {
-        email: user.email,
-      },
-    });
-  } catch (error) {
-    console.error("Error during login:", error.message);
-    res.status(500).json({ message: "Failed to log in." });
-  }
-});
-
-// Admin: Approve User
+// Approve User Route
 app.post("/api/admin/approve-user/:id", async (req, res) => {
+  const userId = req.params.id;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: "Invalid user ID." });
+  }
+
   try {
-    const userId = req.params.id;
-
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid User ID." });
-    }
-
     const user = await User.findByIdAndUpdate(
       userId,
       { approved: true },
       { new: true }
     );
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     res.status(200).json({
-      message: `User approved successfully. Their PIN is: 1153.`,
+      message: "User approved successfully. They can log in with PIN: 1153.",
     });
   } catch (error) {
     console.error("Error approving user:", error.message);
@@ -154,36 +124,22 @@ app.post("/api/admin/approve-user/:id", async (req, res) => {
   }
 });
 
-// Admin: Reject User
+// Reject User Route
 app.post("/api/admin/reject-user/:id", async (req, res) => {
+  const userId = req.params.id;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: "Invalid user ID." });
+  }
+
   try {
-    const userId = req.params.id;
-
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid User ID." });
-    }
-
     const user = await User.findByIdAndDelete(userId);
+    if (!user) return res.status(404).json({ message: "User not found." });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    res.status(200).json({ message: "User rejected and removed successfully." });
+    res.status(200).json({ message: "User rejected successfully." });
   } catch (error) {
     console.error("Error rejecting user:", error.message);
     res.status(500).json({ message: "Failed to reject user." });
-  }
-});
-
-// Fetch Pending Users
-app.get("/api/admin/pending-users", async (req, res) => {
-  try {
-    const users = await User.find({ approved: false });
-    res.status(200).json(users);
-  } catch (error) {
-    console.error("Error fetching pending users:", error.message);
-    res.status(500).json({ message: "Failed to fetch pending users." });
   }
 });
 
@@ -198,73 +154,25 @@ app.get("/api/gallery", async (req, res) => {
   }
 });
 
-app.get("/api/gallery/pending", async (req, res) => {
-  try {
-    const photos = await Photo.find({ approved: false });
-    res.json(photos);
-  } catch (error) {
-    console.error("Error fetching pending photos:", error.message);
-    res.status(500).json({ message: "Failed to fetch pending photos." });
-  }
-});
-
 app.post("/api/gallery", upload.single("photo"), async (req, res) => {
+  const { caption } = req.body;
+
+  if (!caption || !req.file) {
+    return res.status(400).json({ message: "Photo and caption are required." });
+  }
+
+  const photo = new Photo({
+    url: `/uploads/${req.file.filename}`,
+    caption,
+    approved: false,
+  });
+
   try {
-    const { caption } = req.body;
-
-    if (!caption || !req.file) {
-      return res.status(400).json({ message: "Photo and caption are required." });
-    }
-
-    const photo = new Photo({
-      url: `/uploads/${req.file.filename}`,
-      caption,
-      approved: false,
-    });
-
     await photo.save();
-
     res.status(201).json({ message: "Photo uploaded successfully. Pending admin approval." });
   } catch (error) {
     console.error("Error uploading photo:", error.message);
     res.status(500).json({ message: "Failed to upload photo." });
-  }
-});
-
-// Admin Approve/Reject Photos
-app.post("/api/admin/approve-photo/:id", async (req, res) => {
-  try {
-    const photoId = req.params.id;
-
-    if (!mongoose.Types.ObjectId.isValid(photoId)) {
-      return res.status(400).json({ message: "Invalid photo ID." });
-    }
-
-    const photo = await Photo.findByIdAndUpdate(photoId, { approved: true }, { new: true });
-    if (!photo) return res.status(404).json({ message: "Photo not found." });
-
-    res.status(200).json({ message: "Photo approved successfully." });
-  } catch (error) {
-    console.error("Error approving photo:", error.message);
-    res.status(500).json({ message: "Failed to approve photo." });
-  }
-});
-
-app.delete("/api/admin/reject-photo/:id", async (req, res) => {
-  try {
-    const photoId = req.params.id;
-
-    if (!mongoose.Types.ObjectId.isValid(photoId)) {
-      return res.status(400).json({ message: "Invalid photo ID." });
-    }
-
-    const photo = await Photo.findByIdAndDelete(photoId);
-    if (!photo) return res.status(404).json({ message: "Photo not found." });
-
-    res.status(200).json({ message: "Photo rejected successfully." });
-  } catch (error) {
-    console.error("Error rejecting photo:", error.message);
-    res.status(500).json({ message: "Failed to reject photo." });
   }
 });
 
